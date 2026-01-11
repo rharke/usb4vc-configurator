@@ -125,46 +125,70 @@ else:
     pc_app_update_label.config(text=f'This app ({THIS_VERSION_NUMBER}): Unknown', fg='black', bg=default_button_color)
     pc_app_update_label.unbind("<Button-1>")
 
-gamepad_config_lf = LabelFrame(root, text="Custom Gamepad Mappings", width=MAIN_WINDOW_WIDTH - PADDING*2, height=470)
-gamepad_config_lf.place(x=PADDING, y=70)
+mappings_config_lf = LabelFrame(root, text="Custom Mappings", width=MAIN_WINDOW_WIDTH - PADDING*2, height=470)
+mappings_config_lf.place(x=PADDING, y=70)
 
-profiles_lf = LabelFrame(gamepad_config_lf, text="Profiles", width=180, height=435)
+profiles_lf = LabelFrame(mappings_config_lf, text="Profiles", width=180, height=435)
 profiles_lf.place(x=10, y=5)
 
-options_lf = LabelFrame(gamepad_config_lf, text="Options", width=180, height=435)
+options_lf = LabelFrame(mappings_config_lf, text="Options", width=180, height=435)
 options_lf.place(x=200, y=5)
 
-mappings_lf = LabelFrame(gamepad_config_lf, text="Mappings", width=375, height=435)
+mappings_lf = LabelFrame(mappings_config_lf, text="Mappings", width=375, height=435)
 mappings_lf.place(x=390, y=5)
 
-gamepad_mapping_dict_list = []
+profile_dict_list = []
 profile_var = StringVar()
 
 def on_profile_lstbox_select(event):
     update_profile_display()
 
 def update_profile_display():
-    profile_var.set([x['display_name'] for x in gamepad_mapping_dict_list])
+    profile_var.set([x['display_name'] for x in profile_dict_list])
     if len(profile_lstbox.curselection()) <= 0:
         return
     index = profile_lstbox.curselection()[0]
+    profile = profile_dict_list[index]
+    device_type = profile.get('device_type', 'protocol_list_gamepad')
+
     pboard_dropdown.config(state=NORMAL)
-    usb_gamepad_dropdown.config(state=NORMAL)
     mapping_add_button.config(state=NORMAL)
     mapping_remove_button.config(state=NORMAL)
-    print(gamepad_mapping_dict_list[index])
-    pboard_option_var.set(str(gamepad_mapping_dict_list[index].get('protocol_board', "IBMPC")))
-    usb_gamepad_option_var.set(str(gamepad_mapping_dict_list[index].get('usb_gamepad_type', "Xbox")))
+    print(profile)
+
+    protocol_board = profile.get('protocol_board', 'IBMPC')
+    pboard_option_var.set(str(protocol_board))
+
+    if device_type == 'protocol_list_keyboard':
+        update_pboard_dropdown(list(keyboard_types_by_board.keys()))
+        usb_gamepad_dropdown.place_forget()
+        usb_gamepad_type_dropdown_label.place_forget()
+        keyboard_type_dropdown_label.place(x=10, y=80)
+        # Will recreate dropdown, no need to call config
+        update_keyboard_type_dropdown(protocol_board)
+        protocol_name = profile['protocol_name']
+        kb_type = get_keyboard_type_for_protocol_name(protocol_board, protocol_name)
+        if kb_type:
+            keyboard_type_option_var.set(kb_type)
+    else:
+        update_pboard_dropdown(protocol_board_list)
+        usb_gamepad_dropdown.config(state=NORMAL)
+        usb_gamepad_dropdown.place(x=10, y=100, width=150)
+        usb_gamepad_type_dropdown_label.place(x=10, y=80)
+        keyboard_type_dropdown.place_forget()
+        keyboard_type_dropdown_label.place_forget()
+        usb_gamepad_option_var.set(str(profile.get('usb_gamepad_type', 'Xbox')))
+
     mapping_str_list = []
     try:
-        for item in gamepad_mapping_dict_list[index]['mapping']:
+        for item in profile['mapping']:
             this_str = ''
-            usb_gamepad_source_code, usb_gamepad_source_display_name, usb_gamepad_source_type = tuple_list_search_by_codename(all_codes_list, item)
-            map_dict = gamepad_mapping_dict_list[index]['mapping'][item]
-            this_str += usb_gamepad_source_display_name + ' -> '
+            _, source_display_name, _ = tuple_list_search_by_codename(all_codes_list, item)
+            map_dict = profile['mapping'][item]
+            this_str += source_display_name + ' -> '
             for value in list(map_dict.values()):
-                this_code, this_display_name, this_type = tuple_list_search_by_codename(all_codes_list, value)
-                this_str += this_display_name + ' '
+                _, target_display_name, _ = tuple_list_search_by_codename(all_codes_list, value)
+                this_str += target_display_name + ' '
             this_str += '\n'
             mapping_str_list.append(this_str)
         mappings_var.set(mapping_str_list)
@@ -373,7 +397,7 @@ def get_gamepad_type():
     profile_selection = profile_lstbox.curselection()
     if len(profile_selection) <= 0:
         return None
-    return gamepad_mapping_dict_list[profile_selection[0]].get('usb_gamepad_type', "Xbox")
+    return profile_dict_list[profile_selection[0]].get('usb_gamepad_type', "Xbox")
 
 def get_lookup_prefix():
     this_gamepad_type = get_gamepad_type()
@@ -396,7 +420,7 @@ def tuple_list_search_by_codename(tup_list, query):
             return item
     return None, None, None
 
-def create_mapping_window(existing_rule=None):
+def create_gamepad_mapping_window(existing_rule=None):
     def validate_dropdown_menus(event):
         map_from_selected_option = map_from_option_var.get()
         map_category_selected_option = map_to_category_option_var.get()
@@ -443,8 +467,8 @@ def create_mapping_window(existing_rule=None):
     profile_selection = profile_lstbox.curselection()
     if len(profile_selection) <= 0:
         return
-    pboard_type = gamepad_mapping_dict_list[profile_selection[0]].get('protocol_board', "IBMPC")
-    usb_gamepad_type = gamepad_mapping_dict_list[profile_selection[0]].get('usb_gamepad_type', "Xbox")
+    pboard_type = profile_dict_list[profile_selection[0]].get('protocol_board', "IBMPC")
+    usb_gamepad_type = profile_dict_list[profile_selection[0]].get('usb_gamepad_type', "Xbox")
 
     rule_window = Toplevel(root)
     rule_window.title("Edit rules")
@@ -507,7 +531,7 @@ def create_mapping_window(existing_rule=None):
         if map_to_code2 is not None:
             this_map_dict['code'] = map_to_code2
             this_map_dict['code_neg'] = map_to_code1
-        gamepad_mapping_dict_list[selection[0]]['mapping'][map_from_code] = this_map_dict
+        profile_dict_list[selection[0]]['mapping'][map_from_code] = this_map_dict
         update_profile_display()
 
     map_save_button = Button(rule_window, text="Add This Mapping", command=save_this_mapping)
@@ -517,33 +541,149 @@ def create_mapping_window(existing_rule=None):
     map_cancel_button = Button(rule_window, text="Exit", command=close_map_window)
     map_cancel_button.place(x=10, y=175, width=380, height=25)
 
+def create_keyboard_mapping_window():
+    profile_selection = profile_lstbox.curselection()
+    if len(profile_selection) <= 0:
+        return
+
+    rule_window = Toplevel(root)
+    rule_window.title("Keyboard Mapping")
+    rule_window.geometry("400x140")
+    rule_window.resizable(width=FALSE, height=FALSE)
+    rule_window.grab_set()
+
+    # Map From dropdown
+    map_from_label = Label(master=rule_window, text="Map From:")
+    map_from_label.place(x=10, y=10)
+
+    kb_display_names = [x[1] for x in kb_code_list]
+    map_from_option_var = StringVar()
+    map_from_option_var.set(kb_display_names[0])
+    map_from_dropdown = ttk.Combobox(rule_window, textvariable=map_from_option_var, values=kb_display_names)
+    map_from_dropdown.place(x=100, y=10, width=250)
+
+    # Map To dropdown
+    map_to_label = Label(master=rule_window, text="Map To:")
+    map_to_label.place(x=10, y=45)
+
+    map_to_option_var = StringVar()
+    map_to_option_var.set(kb_display_names[0])
+    map_to_dropdown = ttk.Combobox(rule_window, textvariable=map_to_option_var, values=kb_display_names)
+    map_to_dropdown.place(x=100, y=45, width=250)
+
+    def close_map_window():
+        update_profile_display()
+        rule_window.destroy()
+
+    def save_this_mapping():
+        selection = profile_lstbox.curselection()
+        if len(selection) <= 0:
+            return
+        map_from_code, _, _ = tuple_list_search_by_displayname(kb_code_list, map_from_option_var.get())
+        map_to_code, _, _ = tuple_list_search_by_displayname(kb_code_list, map_to_option_var.get())
+
+        if map_from_code is None or map_to_code is None:
+            return
+
+        profile_dict_list[selection[0]]['mapping'][map_from_code] = {'code': map_to_code}
+        update_profile_display()
+
+    map_save_button = Button(rule_window, text="Add This Mapping", command=save_this_mapping)
+    map_save_button.place(x=10, y=80, width=380, height=25)
+
+    map_cancel_button = Button(rule_window, text="Exit", command=close_map_window)
+    map_cancel_button.place(x=10, y=110, width=380, height=25)
+
+def create_new_profile_dialog():
+    """Custom dialog for creating a new profile. Returns dict with 'name' and 'profile_type', or None if cancelled."""
+    result = {'name': None, 'profile_type': None}
+
+    dialog = Toplevel(root)
+    dialog.title("New Profile")
+    dialog.geometry("300x140")
+    dialog.resizable(width=FALSE, height=FALSE)
+    dialog.grab_set()
+
+    # Profile name
+    name_label = Label(dialog, text="Profile Name:")
+    name_label.place(x=10, y=10)
+    name_entry = Entry(dialog, width=30)
+    name_entry.place(x=100, y=10)
+    name_entry.focus_set()
+
+    # Profile type
+    type_label = Label(dialog, text="Profile Type:")
+    type_label.place(x=10, y=45)
+    profile_type_var = StringVar()
+    profile_type_var.set("Gamepad")
+    type_dropdown = OptionMenu(dialog, profile_type_var, "Gamepad", "Keyboard")
+    type_dropdown.place(x=100, y=40, width=150)
+
+    def on_ok():
+        result['name'] = clean_input(name_entry.get(), len_limit=20)
+        result['profile_type'] = profile_type_var.get()
+        dialog.destroy()
+
+    def on_cancel():
+        dialog.destroy()
+
+    ok_button = Button(dialog, text="OK", command=on_ok, width=10)
+    ok_button.place(x=60, y=90)
+    cancel_button = Button(dialog, text="Cancel", command=on_cancel, width=10)
+    cancel_button.place(x=160, y=90)
+
+    dialog.bind('<Return>', lambda e: on_ok())
+    dialog.bind('<Escape>', lambda e: on_cancel())
+
+    dialog.wait_window()
+
+    if result['name'] and len(result['name']) > 0:
+        return result
+    return None
+
 def profile_add_click():
-    answer = simpledialog.askstring("Input", "New profile name?", parent=profiles_lf)
-    if answer is None:
+    result = create_new_profile_dialog()
+    if result is None:
         return
-    answer = clean_input(answer, len_limit=20)
-    if len(answer) == 0:
-        return
-    this_mapping = {'display_name': answer, 'device_type': 'protocol_list_gamepad', 'usb_gamepad_type':'Xbox', 'protocol_board': 'IBMPC', 'protocol_name': 'GAMEPORT_15PIN_GAMEPAD', 'mapping': {}}
-    gamepad_mapping_dict_list.append(this_mapping)
+
+    if result['profile_type'] == 'Keyboard':
+        this_mapping = {
+            'display_name': result['name'],
+            'device_type': 'protocol_list_keyboard',
+            'protocol_board': 'IBMPC',
+            'protocol_name': 'AT_PS2_KB',
+            'mapping': {}
+        }
+    else:
+        this_mapping = {
+            'display_name': result['name'],
+            'device_type': 'protocol_list_gamepad',
+            'usb_gamepad_type': 'Xbox',
+            'protocol_board': 'IBMPC',
+            'protocol_name': 'GAMEPORT_15PIN_GAMEPAD',
+            'mapping': {}
+        }
+
+    profile_dict_list.append(this_mapping)
     update_profile_display()
-    profile_lstbox.selection_clear(0, len(gamepad_mapping_dict_list))
-    profile_lstbox.selection_set(len(gamepad_mapping_dict_list)-1)
+    profile_lstbox.selection_clear(0, len(profile_dict_list))
+    profile_lstbox.selection_set(len(profile_dict_list)-1)
     update_profile_display()
 
 def profile_remove_click():
     selection = profile_lstbox.curselection()
     if len(selection) <= 0:
         return
-    gamepad_mapping_dict_list.pop(selection[0])
+    profile_dict_list.pop(selection[0])
     update_profile_display()
-    profile_lstbox.selection_clear(0, len(gamepad_mapping_dict_list))
+    profile_lstbox.selection_clear(0, len(profile_dict_list))
     profile_lstbox.selection_set(selection[0])
-    if len(gamepad_mapping_dict_list) <= 0 or len(profile_lstbox.curselection()) <= 0:
+    if len(profile_dict_list) <= 0 or len(profile_lstbox.curselection()) <= 0:
         mapping_add_button.config(state=DISABLED)
         mapping_remove_button.config(state=DISABLED)
         pboard_dropdown.config(state=DISABLED)
         usb_gamepad_dropdown.config(state=DISABLED)
+        keyboard_type_dropdown.config(state=DISABLED)
         mappings_var.set([])
     update_profile_display()
 
@@ -551,28 +691,28 @@ def profile_rename_click():
     selection = profile_lstbox.curselection()
     if len(selection) <= 0:
         return
-    answer = simpledialog.askstring("Input", "New name?", parent=profiles_lf, initialvalue=gamepad_mapping_dict_list[selection[0]].get('display_name', 'None'))
+    answer = simpledialog.askstring("Input", "New name?", parent=profiles_lf, initialvalue=profile_dict_list[selection[0]].get('display_name', 'None'))
     if answer is None:
         return
     answer = clean_input(answer, len_limit=20)
     if len(answer) == 0:
         return
-    gamepad_mapping_dict_list[selection[0]]['display_name'] = answer
+    profile_dict_list[selection[0]]['display_name'] = answer
     update_profile_display()
 
 def profile_dupe_click():
     selection = profile_lstbox.curselection()
     if len(selection) <= 0:
         return
-    answer = simpledialog.askstring("Input", "New name?", parent=profiles_lf, initialvalue=gamepad_mapping_dict_list[selection[0]].get('display_name', 'None'))
+    answer = simpledialog.askstring("Input", "New name?", parent=profiles_lf, initialvalue=profile_dict_list[selection[0]].get('display_name', 'None'))
     if answer is None:
         return
     answer = clean_input(answer, len_limit=20)
     if len(answer) == 0:
         return
-    new_profile = copy.deepcopy(gamepad_mapping_dict_list[selection[0]])
+    new_profile = copy.deepcopy(profile_dict_list[selection[0]])
     new_profile['display_name'] = answer
-    gamepad_mapping_dict_list.insert(selection[0] + 1, new_profile)
+    profile_dict_list.insert(selection[0] + 1, new_profile)
     update_profile_display()
 
 def mapping_remove_click():
@@ -586,8 +726,8 @@ def mapping_remove_click():
         return
     mapping_index = mapping_index[0]
 
-    key_to_delete = list(gamepad_mapping_dict_list[profile_index]['mapping'].keys())[mapping_index]
-    gamepad_mapping_dict_list[profile_index]['mapping'].pop(key_to_delete, None)
+    key_to_delete = list(profile_dict_list[profile_index]['mapping'].keys())[mapping_index]
+    profile_dict_list[profile_index]['mapping'].pop(key_to_delete, None)
     update_profile_display()
 
 def make_default_backup_dir_name():
@@ -598,7 +738,7 @@ def save_mapping_to_file():
     this_backup_dir = os.path.join(backup_path, make_default_backup_dir_name())
     ensure_dir(this_backup_dir)
 
-    for item in gamepad_mapping_dict_list:
+    for item in profile_dict_list:
         filename = clean_input(f'usb4vc_map_{item["display_name"]}_{item["protocol_board"]}.json', clean_filename=True).lower()
         backup_dest = os.path.join(this_backup_dir, filename)
         try:
@@ -616,7 +756,7 @@ def save_mapping_to_file():
             continue
         time.sleep(0.05)
 
-    for item in gamepad_mapping_dict_list:
+    for item in profile_dict_list:
         filename = clean_input(f'usb4vc_map_{item["display_name"]}_{item["protocol_board"]}.json', clean_filename=True).lower()
         save_dest = os.path.join(flash_drive_config_path, filename)
         try:
@@ -643,7 +783,17 @@ profile_rename_button.place(x=10, y=350, width=BUTTON_WIDTH, height=BUTTON_HEIGH
 profile_remove_button = Button(profiles_lf, text="Remove", command=profile_remove_click, state=DISABLED)
 profile_remove_button.place(x=10, y=380, width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
 
-mapping_add_button = Button(mappings_lf, text="New", command=create_mapping_window, state=DISABLED)
+def mapping_add_click():
+    selection = profile_lstbox.curselection()
+    if len(selection) <= 0:
+        return
+    profile = profile_dict_list[selection[0]]
+    if profile.get('device_type', 'protocol_list_gamepad') == 'protocol_list_keyboard':
+        create_keyboard_mapping_window()
+    else:
+        create_gamepad_mapping_window()
+
+mapping_add_button = Button(mappings_lf, text="New", command=mapping_add_click, state=DISABLED)
 mapping_add_button.place(x=20, y=350, width=330, height=BUTTON_HEIGHT)
 
 mapping_remove_button = Button(mappings_lf, text="Remove", command=mapping_remove_click, state=DISABLED)
@@ -671,7 +821,7 @@ def select_root_folder(root_path=None):
     dp_root_folder_display.set("Selected: " + root_path)
     flash_drive_base_path = os.path.join(root_folder_path, 'usb4vc')
     flash_drive_config_path = os.path.join(flash_drive_base_path, 'config')
-    load_gamepad_mapping(flash_drive_config_path)
+    load_mapping_profiles(flash_drive_config_path)
     update_profile_display()
     enable_profile_buttons()
     mappings_var.set([])
@@ -679,46 +829,75 @@ def select_root_folder(root_path=None):
 open_button = Button(connection_lf, text="Open...", command=select_root_folder)
 open_button.place(x=10, y=5, width=80)
 
-def load_gamepad_mapping(search_path):
+def load_mapping_profiles(search_path):
     try:
-        gamepad_mapping_dict_list.clear()
+        profile_dict_list.clear()
         file_list = [d for d in os.listdir(search_path) if d.startswith("usb4vc_map") and d.lower().endswith(".json")]
         for item in file_list:
             full_file_name = os.path.join(search_path, item)
             with open(full_file_name) as json_file:
                 temp = json.load(json_file)
                 if isinstance(temp, dict) and 'display_name' in temp:
-                    gamepad_mapping_dict_list.append(temp)
+                    profile_dict_list.append(temp)
                 else:
                     raise ValueError("not a valid config file")
     except Exception as e:
-        print('load_gamepad_mapping:', e)
+        print('load_mapping_profiles:', e)
 
 def pboard_dropdown_change(event):
     selection = profile_lstbox.curselection()
     if len(selection) <= 0:
         return
-    gamepad_mapping_dict_list[selection[0]]['protocol_board'] = pboard_option_var.get()
-    if gamepad_mapping_dict_list[selection[0]]['protocol_board'] == 'IBMPC':
-        gamepad_mapping_dict_list[selection[0]]['protocol_name'] = 'GAMEPORT_15PIN_GAMEPAD'
+    profile = profile_dict_list[selection[0]]
+    new_protocol_board = pboard_option_var.get()
+    profile['protocol_board'] = new_protocol_board
+
+    device_type = profile.get('device_type', 'protocol_list_gamepad')
+    if device_type == 'protocol_list_keyboard':
+        types = keyboard_types_by_board.get(new_protocol_board, [])
+        if types:
+            profile['protocol_name'] = types[0][1]  # First keyboard type's protocol_name
     else:
-        gamepad_mapping_dict_list[selection[0]]['protocol_name'] = 'OFF'
+        if new_protocol_board == 'IBMPC':
+            profile['protocol_name'] = 'GAMEPORT_15PIN_GAMEPAD'
+        else:
+            profile['protocol_name'] = 'OFF'
     update_profile_display()
 
 def usb_gamepad_dropdown_change(event):
     selection = profile_lstbox.curselection()
     if len(selection) <= 0:
         return
-    gamepad_mapping_dict_list[selection[0]]['usb_gamepad_type'] = usb_gamepad_option_var.get()
+    profile_dict_list[selection[0]]['usb_gamepad_type'] = usb_gamepad_option_var.get()
     update_profile_display()
 
 protocol_board_dropdown_label = Label(master=options_lf, text="Protocol Card:")
 protocol_board_dropdown_label.place(x=10, y=5)
 protocol_board_list = ['Unknown', 'IBMPC', 'ADB', 'Lisa/Mac/ADB']
+
+# Keyboard types per protocol board: {protocol_board: [(display_name, protocol_name), ...]}
+keyboard_types_by_board = {
+    'IBMPC': [('AT/PS2', 'AT_PS2_KB'), ('PC XT', 'XT_KB')],
+    'ADB': [('ADB', 'ADB_KB')],
+    'Lisa/Mac/ADB': [('ADB', 'ADB_KB'), ('EarlyMac', 'M0110_KB'), ('Lisa', 'LISA_KB')]
+}
+
 pboard_option_var = StringVar()
 pboard_option_var.set(protocol_board_list[0])
-pboard_dropdown = OptionMenu(options_lf, pboard_option_var, command=pboard_dropdown_change, *protocol_board_list)
-pboard_dropdown.place(x=10, y=30, width=150)
+current_pboard_list = None
+pboard_dropdown = None
+
+def update_pboard_dropdown(board_list):
+    global pboard_dropdown, current_pboard_list
+    if current_pboard_list == board_list:
+        return  # No change needed
+    current_pboard_list = board_list
+    if pboard_dropdown is not None:
+        pboard_dropdown.destroy()
+    pboard_dropdown = OptionMenu(options_lf, pboard_option_var, command=pboard_dropdown_change, *board_list)
+    pboard_dropdown.place(x=10, y=30, width=150)
+
+update_pboard_dropdown(protocol_board_list)
 pboard_dropdown.config(state=DISABLED)
 
 usb_gamepad_type_dropdown_label = Label(master=options_lf, text="Gamepad Type:")
@@ -729,6 +908,51 @@ usb_gamepad_option_var.set(usb_gamepad_list[1])
 usb_gamepad_dropdown = OptionMenu(options_lf, usb_gamepad_option_var, command=usb_gamepad_dropdown_change, *usb_gamepad_list)
 usb_gamepad_dropdown.place(x=10, y=100, width=150)
 usb_gamepad_dropdown.config(state=DISABLED)
+
+keyboard_type_dropdown_label = Label(master=options_lf, text="Keyboard Type:")
+keyboard_type_option_var = StringVar()
+
+def get_keyboard_type_display_names(protocol_board):
+    types = keyboard_types_by_board.get(protocol_board, [])
+    return [t[0] for t in types]
+
+def get_protocol_name_for_keyboard_type(protocol_board, display_name):
+    types = keyboard_types_by_board.get(protocol_board, [])
+    for disp, proto in types:
+        if disp == display_name:
+            return proto
+    return None
+
+def get_keyboard_type_for_protocol_name(protocol_board, protocol_name):
+    types = keyboard_types_by_board.get(protocol_board, [])
+    for disp, proto in types:
+        if proto == protocol_name:
+            return disp
+    return types[0][0] if types else None
+
+def keyboard_type_dropdown_change(event):
+    selection = profile_lstbox.curselection()
+    if len(selection) <= 0:
+        return
+    protocol_board = profile_dict_list[selection[0]].get('protocol_board', 'IBMPC')
+    protocol_name = get_protocol_name_for_keyboard_type(protocol_board, keyboard_type_option_var.get())
+    if protocol_name:
+        profile_dict_list[selection[0]]['protocol_name'] = protocol_name
+
+def update_keyboard_type_dropdown(protocol_board):
+    global keyboard_type_dropdown
+    keyboard_type_dropdown.destroy()
+    display_names = get_keyboard_type_display_names(protocol_board)
+    if display_names:
+        keyboard_type_option_var.set(display_names[0])
+        keyboard_type_dropdown = OptionMenu(options_lf, keyboard_type_option_var, command=keyboard_type_dropdown_change, *display_names)
+    else:
+        keyboard_type_option_var.set('')
+        keyboard_type_dropdown = OptionMenu(options_lf, keyboard_type_option_var, '')
+    keyboard_type_dropdown.place(x=10, y=100, width=150)
+
+# Create initial keyboard type dropdown (will be rebuilt when protocol board changes)
+keyboard_type_dropdown = OptionMenu(options_lf, keyboard_type_option_var, '')
 
 # select_root_folder('C:/Users/allen/Desktop/flashdrive_test')
 
