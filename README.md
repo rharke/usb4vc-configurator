@@ -2,7 +2,7 @@
 
 [Get USB4VC](https://github.com/dekuNukem/USB4VC/blob/master/README.md) | [Official Discord](https://discord.gg/HAuuh3pAmB) | [Getting Started](https://github.com/dekuNukem/USB4VC/blob/master/getting_started.md)
 
-You can **define your own custom gamepad mappings** with USB4VC Configurator. This guide shows you how.
+You can **define your own custom gamepad and keyboard mappings** with USB4VC Configurator. This guide shows you how.
 
 This software is fairly new and experimental right now, so do let me know if you run into any issues!
 
@@ -44,17 +44,26 @@ Press the `Open...` button and select **the entire flash drive**:
 
 ### Make a profile
 
-You can create multiple *profiles* for your USB gamepad. Each profile contains a different mapping.
+You can create multiple *profiles* for your USB devices. Each profile contains a different mapping.
 
 Typically you make one for each game / OS.
 
-Click `New` to create a new profile, enter a name, and select the desired protocol card and USB gamepad type.
+Click `New` to create a new profile, enter a name, and select the profile type:
+
+* **Gamepad**: For mapping USB gamepad buttons/axes to keyboard, mouse, or 15-pin gamepad outputs
+* **Keyboard**: For remapping USB keyboard keys to different keys
+
+Then select the desired protocol card and device-specific options.
 
 ![Alt text](resources/profile.png)
 
+## Gamepad Mappings
+
+Select the desired protocol card and USB gamepad type (e.g., Xbox, Playstation, or Generic for unsupported controllers).
+
 ### (OPTIONAL) Find out event codes
 
-[Skip this step](#create-a-new-mapping) if you're using a supported controller (i.e. XBox and Playstation).
+[Skip this step](#create-a-gamepad-mapping) if you're using a supported controller (i.e. XBox and Playstation).
 
 If you're using an **UNSUPPORTED** gamepad, you might want to find out what each button does first.
 
@@ -76,7 +85,7 @@ Write down the **EVENT CODE NAME** for each button, you'll need them later.
 
 **Hold** `+` button while pushing a gamepad button to exit.
 
-### Create a new mapping
+### Create a gamepad mapping
 
 Click `New` in `Mappings` section to create a new mapping.
 
@@ -110,19 +119,37 @@ When mapping **analog triggers** to keyboard keys, select the same key.
 
 ![Alt text](resources/same.png)
 
+## Keyboard Mappings
+
+Select the desired protocol card and keyboard type (e.g., AT/PS2, ADB, or Lisa).
+
+![Alt text](resources/kb_options.png)
+
+### Create Keyboard Mappings
+
+Click `New` in the Mappings section. Select the source key in "Map From" and the target key in "Map To".
+
+![Alt text](resources/kb_mapping.png)
+
+For example, you could:
+* Remap WASD to arrow keys for games that only support arrows
+* Swap Ctrl and Caps Lock positions
+* Remap international keyboard layouts
+* Map a key to one your keyboard lacks, such as the Power key needed for some vintage Macs
+
+## Save to Flash Drive
+
 After creating your mappings, press `Write Current Mappings to Flash Drive` button:
 
 ![Alt text](resources/save.png)
 
-Eject the flash drive, and plug it in the USB4VC.
-
 ## Load Mappings on USB4VC
 
-Select "Load Custom Config from USB" in the main menu. It will copy over the mappings.
+Eject the flash drive and plug it into the USB4VC. Select "Load Custom Config from USB" in the main menu to copy over the mappings.
 
 ![Alt text](resources/rpiupdate.jpeg)
 
-The new profiles should appear in the `Gamepad Protocol` setting, use `enter` button to cycle through.
+The new profiles should appear in the `Gamepad Protocol` or `Keyboard` settings depending on the profile type. Use the `enter` button to cycle through.
 
 ![Alt text](resources/descent.jpeg)
 
